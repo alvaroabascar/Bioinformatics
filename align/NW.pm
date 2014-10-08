@@ -22,9 +22,8 @@ sub align {
     
     my @seq1_orig = split "", $seq1;
     my @seq2_orig = split "", $seq2;
-    return find_alignments({"seq1" => \@seq1_orig,
-                                  "seq2" => \@seq2_orig,
-                                  "arrow_matrix" => $arrow_matrix});
+    return find_alignments({"seq1" => \@seq1_orig, "seq2" => \@seq2_orig,
+                            "arrow_matrix" => $arrow_matrix});
 }
 
 sub find_alignments {
@@ -103,33 +102,32 @@ sub build_score_arrow_matrices {
 
     # NOTA
     # this should be replaced with my @arrow_matrix!
-    my $arrow_matrix = [];
+    my @arrow_matrix;
 
     # fill column 0 and row 0
-    $score_matrix[0]->[0] = 0;
-    $arrow_matrix->[0]->[0] = [];
+    $score_matrix[0][0] = 0;
     for ($i = 1; $i <= scalar @seq1; $i++) {
         $score_matrix[$i][0] = $score_matrix[$i-1][0] + $gap_penalty;
-        $arrow_matrix->[$i]->[0] = ["left"];
+        $arrow_matrix[$i][0] = ["left"];
     }
     for ($j = 1; $j <= scalar @seq2; $j++) {
         $score_matrix[0][$j] = $score_matrix[0][$j-1] + $gap_penalty;
-        $arrow_matrix->[0]->[$j] = ["up"];
+        $arrow_matrix[0][$j] = ["up"];
     }
-    # fill 
+    # fill the rest of the matrix
     for ($i = 1; $i <= scalar @seq1; $i++) {
         for ($j = 1; $j <= scalar @seq2; $j++) {
             @scores= ($score_matrix[$i-1][$j-1] + $score_matrix[$i]->[$j],
                       $score_matrix[$i-1][$j] + $gap_penalty,
                       $score_matrix[$i][$j-1] + $gap_penalty);
-            $score_matrix[$i]->[$j] = max(@scores);
+            $score_matrix[$i][$j] = max(@scores);
             my @arrows = map { if ($_ == 0) { "diagonal" }
                                elsif ($_ == 1) { "left" }
                                elsif ($_ == 2) { "up" }} max_index(@scores);
-            $arrow_matrix->[$i]->[$j] = \@arrows;
+            $arrow_matrix[$i][$j] = \@arrows;
         }
     }
-    return (\@score_matrix, $arrow_matrix);
+    return (\@score_matrix, \@arrow_matrix);
 }
 
 sub score {
