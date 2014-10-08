@@ -14,44 +14,11 @@ sub align {
     my $seq1 = $args{"seq1"};
     my $seq2 = $args{"seq2"};
     my $gap_penalty = $args{"gap_penalty"};
-    my $score_matrix = build_score_matrix($seq1, $seq2);
-    #DEBUG#
-    print "score matrix:\n";
-    print_matrix($score_matrix);
-    #END_DEBUG
-    my $i, my $j;
-    my @scores;
-    my $arrow_matrix = [];
-
-    # fill column 0 and row 0
-    $score_matrix->[0]->[0] = 0;
-    $arrow_matrix->[0]->[0] = [];
-    for ($i = 1; $i <= length $seq1; $i++) {
-        $score_matrix->[$i][0] = $score_matrix->[$i-1][0] + $gap_penalty;
-        $arrow_matrix->[$i]->[0] = ["left"];
-    }
-    for ($j = 1; $j <= length $seq2; $j++) {
-        $score_matrix->[0][$j] = $score_matrix->[0][$j-1] + $gap_penalty;
-        $arrow_matrix->[0]->[$j] = ["up"];
-    }
-    # fill 
-    for ($i = 1; $i <= length $seq1; $i++) {
-        for ($j = 1; $j <= length $seq2; $j++) {
-            @scores= ($score_matrix->[$i-1]->[$j-1] + $score_matrix->[$i]->[$j],
-                      $score_matrix->[$i-1]->[$j] + $gap_penalty,
-                      $score_matrix->[$i]->[$j-1] + $gap_penalty);
-            $score_matrix->[$i]->[$j] = max(@scores);
-            my @arrows = map { if ($_ == 0) { "diagonal" }
-                               elsif ($_ == 1) { "left" }
-                               elsif ($_ == 2) { "up" }} max_index(@scores);
-            $arrow_matrix->[$i]->[$j] = \@arrows;
-        }
-    }
-    #DEBUG#
-    print "\naccumulated score matrix\n";
-    print_matrix($score_matrix);
-    #END_DEBUG#
-
+    my $score_matrix;
+    my $arrow_matrix;
+    $score_matrix, $arrow_matrix = build_score_arrow_matrices($seq1, $seq2);
+    
+    
     my @seq1_orig = split "", $seq1;
     my @seq2_orig = split "", $seq2;
     return find_alignments({"seq1" => \@seq1_orig,
@@ -103,12 +70,17 @@ sub find_alignments {
 }
 
 
-sub build_score_matrix {
-    # build the score matrix, and return a reference to it
+sub build_score_arrow_matrices {
+    # build a matrix of scores and a matrix of "arrows", return
+    # a vector with a reference to each of them.
+
     my @seq1 = split "", shift;
     my @seq2 = split "", shift;
-    my @score_matrix;
 
+    # Build the first score matrix, this matrix is (n+1)*(m+1), where the first
+    # row and first cols are filled with zeros, and the rest contains the
+    # scores between elements matrix(i, j) = score(seq1(i), seq2(j))
+    my @score_matrix;
     # first row is made of zeros (due to implementation of align)
     my @first_row = (0) x (scalar @seq2 + 1);
     push @score_matrix, \@first_row;
@@ -121,7 +93,38 @@ sub build_score_matrix {
         }
         push @score_matrix, \@row;
     }
-    return \@score_matrix;
+
+    # now fill score_matrix with the accumulated scores
+
+    my $i, my $j;
+    my @scores;
+    my $arrow_matrix = [];
+
+    # fill column 0 and row 0
+    $score_matrix->[0]->[0] = 0;
+    $arrow_matrix->[0]->[0] = [];
+    for ($i = 1; $i <= length $seq1; $i++) {
+        $score_matrix->[$i][0] = $score_matrix->[$i-1][0] + $gap_penalty;
+        $arrow_matrix->[$i]->[0] = ["left"];
+    }
+    for ($j = 1; $j <= length $seq2; $j++) {
+        $score_matrix->[0][$j] = $score_matrix->[0][$j-1] + $gap_penalty;
+        $arrow_matrix->[0]->[$j] = ["up"];
+    }
+    # fill 
+    for ($i = 1; $i <= length $seq1; $i++) {
+        for ($j = 1; $j <= length $seq2; $j++) {
+            @scores= ($score_matrix->[$i-1]->[$j-1] + $score_matrix->[$i]->[$j],
+                      $score_matrix->[$i-1]->[$j] + $gap_penalty,
+                      $score_matrix->[$i]->[$j-1] + $gap_penalty);
+            $score_matrix->[$i]->[$j] = max(@scores);
+            my @arrows = map { if ($_ == 0) { "diagonal" }
+                               elsif ($_ == 1) { "left" }
+                               elsif ($_ == 2) { "up" }} max_index(@scores);
+            $arrow_matrix->[$i]->[$j] = \@arrows;
+        }
+    }
+    return (\@score_matrix, \@arrow_matrix);
 }
 
 sub score {
