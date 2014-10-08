@@ -102,7 +102,7 @@ sub build_score_arrow_matrices {
     my @scores;
 
     # NOTA
-    # this should be replaced with my @arrow_matrix
+    # this should be replaced with my @arrow_matrix!
     my $arrow_matrix = [];
 
     # fill column 0 and row 0
