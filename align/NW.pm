@@ -16,9 +16,14 @@ sub align {
     my $gap = $args{"gap"};
     my @matrix = build_matrix({seq1 => \@seq1, seq2 => \@seq2,
                                gap => $gap});
-    print_matrix(\@matrix);
-    return find_alignments({seq1 => \@seq1, seq2 => \@seq2,
-                            matrix => \@matrix});
+    my @alignments = find_alignments({seq1 => \@seq1,
+                                      seq2 => \@seq2,
+                                      matrix => \@matrix,
+                                      i => scalar @seq1,
+                                      j => scalar @seq2});
+    # return a dictionary with the alignments and the score
+    return (alignments => \@alignments,
+            score => $matrix[-1][-1]->{score});
 }
 
 sub build_matrix {
@@ -59,15 +64,13 @@ sub build_matrix {
 
             # the three possible scores, corresponding to a diagonal,
             # left and up pointer (arrow)
-            @scores = ($score + $matrix[$i-1][$j-1]{score}, # diag
-                                $matrix[$i-1][$j]{score} + $gap, # left
-                                $matrix[$i][$j-1]{score} + $gap); # up
+            @scores = ($score + $matrix[$i-1][$j-1]{score},         # diag
+                                $matrix[$i-1][$j]{score} + $gap,    # left
+                                $matrix[$i][$j-1]{score} + $gap);   # up
             $max_score = max(@scores);
             $matrix[$i][$j]{score} = $max_score;
-
             # index (or indexes, if tie) of the maximal score
-            @max_scores_indx = max_index(@scores, $max_score);
-
+            @max_scores_indx = max_index(@scores);
             # index 0 = diagonal, index 1 = left, index 2 = up
             my @arrows =  map { ($_ == 0) ? (diagonal => 1) :
                                 ($_ == 1) ? (left => 1) :
@@ -86,84 +89,77 @@ sub find_alignments {
     my @matrix = @{$args{"matrix"}};
     my @seq1 = @{$args{"seq1"}};
     my @seq2 = @{$args{"seq2"}};
-    my $i = defined $seq1[0] ? scalar @seq1 : 0;
-    my $j = defined $seq2[0] ? scalar @seq2 : 0;
-    print "find_alignments $i $j:\n", @seq1, "\n", @seq2, "\n";
+    my $i = $args{"i"};
+    my $j = $args{"j"};
 
-    if ($i <= 1 && $j <= 1) {
-        print "returning undef\n";
-        return ();
+    # old version
+    #my $i = defined $seq1[0] ? scalar @seq1 : 0;
+    #my $j = defined $seq2[0] ? scalar @seq2 : 0;
+
+    if ($i < 1 && $j < 1) {
+        return ([\@seq1, \@seq2]);
     }
     # we align backwards, starting with the last elements of the sequence
     # and then moving towards the begining
-    my @seq1_aligned = ($seq1[$i-1]) ;
-    my @seq2_aligned = ($seq2[$j-1]);
-
-    my @all_alignments;
+    my @seq1_aligned;
+    my @seq2_aligned;
     my @seq1_new;
     my @seq2_new;
     my @results;
+    my @all_alignments = ();
+    my $paths = 0;
     if (defined $matrix[$i][$j]->{diagonal}) {
-        print "diagonal\n";
+        @seq1_aligned = ($seq1[-1]);
+        @seq2_aligned = ($seq2[-1]);
         @seq1_new = @seq1[0..$i-2];
         @seq2_new = @seq2[0..$j-2];
-        @results = find_alignments({seq1 => \@seq1_new, seq2 => \@seq2_new,
-                                    matrix => \@matrix});
-        print "results length: ", scalar @results, "\n";
-        print "entering loop\n";
-        my @alignment;
-        if (not @results) {
-            push @alignment, [\@seq1_aligned, \@seq2_aligned];
-        } else {
-            foreach my $result (@results) {
-                print "in-loop\n";
-                @alignment = @$result;
-                print "result: @alignment: $alignment[0] $alignment[1]\n";
-                push @{$alignment[0]}, @seq1_aligned;
-                push @{$alignment[1]}, @seq2_aligned;
-            }
-        }
-        push @results, @alignment;
-    }
-
-    if (defined $matrix[$i][$j]->{up}) {
-        print "up\n";
-        unshift @seq1_aligned, "_";
-        @seq1_new = @seq1[0..$i];
-        @seq2_new = @seq2[0..$j-1];
-        @results = find_alignments({seq1 => \@seq1_new, seq2 => \@seq2_new,
-                                    matrix => \@matrix});
+        @results = find_alignments({seq1 => \@seq1_new,
+                                    seq2 => \@seq2_new,
+                                    matrix => \@matrix,
+                                    i => $i-1,
+                                    j => $j-1});
         foreach my $result (@results) {
-            if (defined $result) {
-                my @alignment = @$result;
-                push @{$alignment[0]}, @seq1_aligned;
-                push @{$alignment[1]}, @seq2_aligned;
-                push @results, @alignment;
-            } else {
-                push @results, [\@seq1_aligned, \@seq2_aligned];
-            }
+            my @alignment = @$result;               # declaration must be HERE
+            push @{$alignment[0]}, @seq1_aligned;
+            push @{$alignment[1]}, @seq2_aligned;
+            push @all_alignments, \@alignment;
         }
     }
     if (defined $matrix[$i][$j]->{left}) {
-        print "left\n";
-        unshift @seq2_aligned, "_";
-        @seq1_new = @seq1[0..$i-1];
-        @seq2_new = @seq2[0..$j];
-        @results = find_alignments({seq1 => \@seq1_new, seq2 => \@seq2_new,
-                                    matrix => \@matrix});
+        @seq1_aligned = ($seq1[-1]);
+        @seq2_aligned = ("_");
+        @seq1_new = @seq1[0..$#seq1-1];
+        @seq2_new = @seq2[0..$#seq2];
+        @results = find_alignments({seq1 => \@seq1_new,
+                                    seq2 => \@seq2_new,
+                                    matrix => \@matrix,
+                                    i => $i-1,
+                                    j => $j});
         foreach my $result (@results) {
-            if (defined $result) {
-                my @alignment = @$result;
-                push @{$alignment[0]}, @seq1_aligned;
-                push @{$alignment[1]}, @seq2_aligned;
-                push @results, \@alignment;
-            } else {
-                push @results, [\@seq1_aligned, \@seq2_aligned];
-            }
+            my @alignment = @$result;                # declaration must be HERE
+            push @{$alignment[0]}, @seq1_aligned;
+            push @{$alignment[1]}, @seq2_aligned;
+            push @all_alignments, \@alignment;
         }
     }
-    print "returning: @results";
-    return @results;
+    if (defined $matrix[$i][$j]->{up}) {
+        @seq1_aligned = ("_");
+        @seq2_aligned = ($seq2[-1]);
+        @seq1_new = @seq1[0..$#seq1];
+        @seq2_new = @seq2[0..$#seq2-1];
+        @results = find_alignments({seq1 => \@seq1_new,
+                                    seq2 => \@seq2_new,
+                                    matrix => \@matrix,
+                                    i => $i,
+                                    j => $j-1});
+        foreach my $result (@results) {
+            my @alignment = @$result;               # declaration must be HERE
+            push @{$alignment[0]}, @seq1_aligned;
+            push @{$alignment[1]}, @seq2_aligned;
+            push @all_alignments, \@alignment;
+        }
+    }
+    return @all_alignments;
 }
 
 sub pairs {
@@ -192,6 +188,21 @@ sub print_matrix {
         print "|";
         foreach my $elem (@$row) {
             printf "%${pad}d",  $elem->{score}, " ";
+        }
+        print " " x ($pad - 1), "|\n";
+    }
+}
+
+sub print_matrix_arrows {
+    my @matrix = @{shift @_};
+    my $pad = 5;
+    foreach my $row (@matrix) {
+        print "|";
+        foreach my $elem (@$row) {
+            my $num = 0 + ($elem->{diagonal} || 0) +
+                          2*($elem->{left} || 0) +
+                          4*($elem->{up} || 0);
+            printf "%${pad}d",  $num, " ";
         }
         print " " x ($pad - 1), "|\n";
     }
