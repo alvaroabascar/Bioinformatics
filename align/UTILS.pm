@@ -2,7 +2,7 @@
 use strict;
 use warnings;
 
-package NW;
+package UTILS;
 
 #
 # Utilities to work with sequences
@@ -16,7 +16,6 @@ sub load_fasta_seqs_by_name {
     # return them as a hash {name} -> sequence
     my $filename = shift;
     my $seq_names = join "|", @_;
-    my @seqs;
     my $file_content;
 
     # open file and dump content into $file_content
@@ -24,10 +23,28 @@ sub load_fasta_seqs_by_name {
     $file_content = join "", readline $fhandle;
     close($fhandle);
     
-    my %seqs = $file_content =~ m/>($seq_names)\n([ATCG\s]+?)\n/g;
-    return %seqs;
+    #my @seqs = $file_content =~ m/>($seq_names)\s+?([ATCG\s]+)\n/g;
+    my @seqs = $file_content =~ m/>($seq_names)\s+?([A-Za-z\s]+)\n/g;
+    map { $_ =~ s/\s//g } @seqs;
+    return @seqs;
 }
 
 sub load_fasta_seqs {
-    return load_fasta_seqs_by_name(shift, "\w\W")
+    return load_fasta_seqs_by_name(shift, '\w\W');
 }
+
+sub pretty_align {
+    my @seq1 = @{shift @_};
+    my @seq2 = @{shift @_};
+    my $cols = join "", `tput cols`;   # "backticks" execute a command and
+                                       # return a list of lines as output
+    my $i = 0;
+    my @compare = map { ($_ eq $seq2[$i++]) ? "*" : "." } @seq1; 
+    while (@seq1 || @seq2) {
+        print join "", splice(@seq1, 0, $cols-1), "\n";
+        print join "", splice(@seq2, 0, $cols-1), "\n";
+        print join "", splice(@compare, 0, $cols-1), "\n\n";
+    }
+}
+ 
+1;   
