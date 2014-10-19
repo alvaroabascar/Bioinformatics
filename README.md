@@ -1,4 +1,4 @@
-Bioinformatics
+moltbe
 ===
 
 Some very simple algorithms for bioinformatics, which serve only as a practice
