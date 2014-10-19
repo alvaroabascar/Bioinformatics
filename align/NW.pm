@@ -112,59 +112,48 @@ sub find_alignments {
     }
     # we align backwards, starting with the last elements of the sequence
     # and then moving towards the begining
-    my @seq1_aligned;
-    my @seq2_aligned;
-    my @seq1_new;
-    my @seq2_new;
-    my @results;
-    my @all_alignments = ();
-    my $paths = 0;
+
+    my @new_recursion_arguments = ();
     if (defined $matrix[$i][$j]->{diagonal}) {
-        @seq1_aligned = ($seq1[-1]);
-        @seq2_aligned = ($seq2[-1]);
-        @seq1_new = @seq1[0..$i-2];
-        @seq2_new = @seq2[0..$j-2];
-        @results = find_alignments({seq1 => \@seq1_new,
-                                    seq2 => \@seq2_new,
-                                    matrix => \@matrix,
-                                    i => $i-1,
-                                    j => $j-1});
-        foreach my $result (@results) {
-            my @alignment = @$result;               # declaration must be HERE
-            push @{$alignment[0]}, @seq1_aligned;
-            push @{$alignment[1]}, @seq2_aligned;
-            push @all_alignments, \@alignment;
-        }
+        push @new_recursion_arguments, {
+                                        i => $i-1,
+                                        j => $j-1,
+                                        seq1_aligned => [$seq1[-1]],
+                                        seq2_aligned => [$seq2[-1]],
+                                        seq1_new => [@seq1[0..$i-2]],
+                                        seq2_new => [@seq2[0..$j-2]]}
     }
     if (defined $matrix[$i][$j]->{left}) {
-        @seq1_aligned = ($seq1[-1]);
-        @seq2_aligned = ("_");
-        @seq1_new = @seq1[0..$#seq1-1];
-        @seq2_new = @seq2[0..$#seq2];
-        @results = find_alignments({seq1 => \@seq1_new,
-                                    seq2 => \@seq2_new,
-                                    matrix => \@matrix,
-                                    i => $i-1,
-                                    j => $j});
-        foreach my $result (@results) {
-            my @alignment = @$result;                # declaration must be HERE
-            push @{$alignment[0]}, @seq1_aligned;
-            push @{$alignment[1]}, @seq2_aligned;
-            push @all_alignments, \@alignment;
-        }
+        push @new_recursion_arguments, {
+                                        i => $i-1,
+                                        j => $j,
+                                        seq1_aligned => [$seq1[-1]],
+                                        seq2_aligned => ["_"],
+                                        seq1_new => [@seq1[0..$#seq1-1]],
+                                        seq2_new => [@seq2[0..$#seq2]]}
     }
     if (defined $matrix[$i][$j]->{up}) {
-        @seq1_aligned = ("_");
-        @seq2_aligned = ($seq2[-1]);
-        @seq1_new = @seq1[0..$#seq1];
-        @seq2_new = @seq2[0..$#seq2-1];
-        @results = find_alignments({seq1 => \@seq1_new,
-                                    seq2 => \@seq2_new,
-                                    matrix => \@matrix,
-                                    i => $i,
-                                    j => $j-1});
+        push @new_recursion_arguments, {
+                                        i => $i,
+                                        j => $j-1,
+                                        seq1_aligned => ["_"],
+                                        seq2_aligned => [$seq1[-1]],
+                                        seq1_new => [@seq1[0..$#seq1]],
+                                        seq2_new => [@seq2[0..$#seq2-1]]}
+    }
+    my @all_alignments = ();
+    my @results;
+    my (@seq1_aligned, @seq2_aligned);
+    foreach my $args (@new_recursion_arguments) {
+        @seq1_aligned = @{$args->{seq1_aligned}};
+        @seq2_aligned = @{$args->{seq2_aligned}};
+        @results = find_alignments({seq1 => $args->{seq1_new},
+                                       seq2 => $args->{seq2_new},
+                                       matrix => \@matrix,
+                                       i => $args->{i},
+                                       j => $args->{j}});
         foreach my $result (@results) {
-            my @alignment = @$result;               # declaration must be HERE
+            my @alignment = @$result;      # declaration must be HERE
             push @{$alignment[0]}, @seq1_aligned;
             push @{$alignment[1]}, @seq2_aligned;
             push @all_alignments, \@alignment;
