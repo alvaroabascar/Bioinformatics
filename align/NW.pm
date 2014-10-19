@@ -103,10 +103,6 @@ sub find_alignments {
     my $i = $args{"i"};
     my $j = $args{"j"};
 
-    # old version
-    #my $i = defined $seq1[0] ? scalar @seq1 : 0;
-    #my $j = defined $seq2[0] ? scalar @seq2 : 0;
-
     if ($i < 1 && $j < 1) {
         return ([\@seq1, \@seq2]);
     }
@@ -137,7 +133,7 @@ sub find_alignments {
                                         i => $i,
                                         j => $j-1,
                                         seq1_aligned => ["_"],
-                                        seq2_aligned => [$seq1[-1]],
+                                        seq2_aligned => [$seq2[-1]],
                                         seq1_new => [@seq1[0..$#seq1]],
                                         seq2_new => [@seq2[0..$#seq2-1]]}
     }
