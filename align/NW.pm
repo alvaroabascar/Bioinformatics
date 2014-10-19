@@ -9,26 +9,34 @@ package NW;
 #
 
 sub align {
-    # align two sequences, return the alignment as an array of two strings
+    # align two sequences, return a dict with the score and all the optimal
+    # alignments as an array of arrays, each containing the two aligned
+    # sequences
     my %args = %{shift @_};
     my @seq1 = split "", $args{"seq1"};
     my @seq2 = split "", $args{"seq2"};
     my $gap = $args{"gap"};
+
+    # build the matrix, including the scores and directions
     my @matrix = build_matrix({seq1 => \@seq1, seq2 => \@seq2,
                                gap => $gap});
+
+    # find all the alignments
     my @alignments = find_alignments({seq1 => \@seq1,
                                       seq2 => \@seq2,
                                       matrix => \@matrix,
                                       i => scalar @seq1,
                                       j => scalar @seq2});
+
     # return a dictionary with the alignments and the score
     return (alignments => \@alignments,
             score => $matrix[-1][-1]->{score});
 }
 
 sub build_matrix {
-    # build a matrix of scores and a matrix of "arrows", return
-    # a vector with a reference to each of them.
+    # build a matrix where each cell contains a score and the directions.
+    # a cell the direction "diagonal" if cell->{diagonal} is defined, "left" if
+    # cell->{left} is defined, and "up" if cell->{up} is defined
 
     my %args = %{shift @_};
     my @seq1 = @{$args{seq1}};
@@ -85,6 +93,9 @@ sub build_matrix {
 }
 
 sub find_alignments {
+    # find all the optimal alignments, recursively. Return an array of arrays,
+    # containing all of them
+
     my %args = %{shift @_};
     my @matrix = @{$args{"matrix"}};
     my @seq1 = @{$args{"seq1"}};
